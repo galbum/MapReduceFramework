@@ -1,0 +1,12 @@
+omri.wolf1, galbum
+Omri Wolf (204867881), Gabi Album (316563949)
+EX: 3
+
+FILES:
+MapReduceFramework.cpp -- The source code for the MapReduce Framework - based on header file given by the course.
+Barrier.cpp -- Source code for Thread barrier (same as given by example by the course).
+Barrier.h -- Header file for Barrier.cpp.
+
+REMARKS:
+
+ANSWERS:
