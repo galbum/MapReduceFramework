@@ -133,7 +133,6 @@ void threadMap(void *context)
     auto *tc = (ThreadContext *) context;
     while (((tc->job->counter.load() << 33) >> 33) < tc->job->inputVec->size())
     {
-        mutexAction (tc->job->mutexes.at (tc->tid), LOCK);
         // if there are still pair to pull from inputVec, pull them.
         uint64_t curr_count = tc->job->counter++;
         curr_count = (curr_count << 33) >> 33;
@@ -144,7 +143,6 @@ void threadMap(void *context)
         }
         else
             (tc->job->counter)--;
-        mutexAction (tc->job->mutexes.at (tc->tid), UNLOCK);
     }
 }
 
@@ -193,17 +191,22 @@ void shuffle(ThreadContext* tc){
 void threadReduce(void *context)
 {
   auto *tc = (ThreadContext *) context;
-  mutexAction (tc->job->outputVecMutex, LOCK);
   while(!tc->job->shuffleOutput.empty())
   {
+    mutexAction (tc->job->outputVecMutex, LOCK);
+    if (tc->job->shuffleOutput.empty())
+    {
+      mutexAction (tc->job->outputVecMutex, UNLOCK);
+      break;
+    }
     IntermediateVec *vec = tc->job->shuffleOutput.back();
     uint64_t vecSize = vec->size();
     tc->job->shuffleOutput.pop_back();
+    mutexAction (tc->job->outputVecMutex, UNLOCK);
     tc->job->client->reduce(vec, tc->job);
     // add the number of pairs done to the count
     tc->job->counter += vecSize;
   }
-  mutexAction (tc->job->outputVecMutex, UNLOCK);
 }
 
 /**
@@ -269,8 +272,10 @@ void emit2(K2 *key, V2 *value, void *context)
 void emit3(K3 *key, V3 *value, void *context)
 {
     auto *job = (JobContext *) context;
+    mutexAction(job->atomicMutex, LOCK);
     OutputPair pair = OutputPair(key, value);
     job->outputVec->push_back(pair);
+    mutexAction(job->atomicMutex, UNLOCK);
 }
 
 /**
